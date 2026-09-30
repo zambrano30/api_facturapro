@@ -5,12 +5,14 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import bcrypt from 'bcryptjs'
+import swaggerUi from 'swagger-ui-express'
 import { pool, withTransaction } from './db.js'
 import {
   adminRequired, authRequired, clearRefreshCookie, companyRequired,
   getPublicUser, getRefreshToken, hashRefreshToken, issueLoginSession,
   trustedOrigin,
 } from './security.js'
+import { swaggerSpec } from './swagger.js'
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must contain at least 32 characters')
 
@@ -29,6 +31,9 @@ app.use(cors({
   credentials: true,
 }))
 app.use(express.json({ limit: '1mb' }))
+
+// Swagger UI
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { swaggerOptions: { persistAuthorization: true } }))
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false })
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
