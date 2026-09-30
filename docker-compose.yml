@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0-alpine
+    container_name: facturapro-db
+    environment:
+      MYSQL_ROOT_PASSWORD: Uruguay@2002
+      MYSQL_DATABASE: facturapro
+      MYSQL_USER: facturapro_app
+      MYSQL_PASSWORD: facturapro_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - facturapro-network
+
+  # API Node.js
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facturapro-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://facturapro_app:facturapro_pass@db:3306/facturapro
+      JWT_SECRET: "abcdefghijklmnopqrstuvwxyz12345678"
+      NODE_ENV: development
+      PORT: 3001
+      FRONTEND_URL: "http://localhost:5173"
+      COOKIE_SAME_SITE: lax
+      COOKIE_SECURE: "false"
+      DB_CONNECTION_LIMIT: 10
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - facturapro-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  facturapro-network:
+    driver: bridge
